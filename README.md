@@ -62,8 +62,8 @@
 
 ### 1. Клонирование и переход в проект
 ```bash
-git clone https://github.com/culcat/battery-bar.git
-cd battery-bar
+git clone https://github.com/culcat/BatteryBar-MacOS.git
+cd BatteryBar-MacOS
 ```
 
 ### 2. Сборка оптимизированного релиза
