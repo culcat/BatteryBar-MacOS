@@ -1,0 +1,26 @@
+[package]
+name = "battery-bar"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+objc2 = "0.5"
+objc2-foundation = { version = "0.2", features = [
+    "NSString",
+    "NSThread",
+    "dispatch",
+] }
+objc2-app-kit = { version = "0.2", features = [
+    "NSApplication",
+    "NSRunningApplication",
+    "NSResponder",
+    "NSStatusBar",
+    "NSStatusItem",
+    "NSStatusBarButton",
+    "NSView",
+    "NSControl",
+    "NSButton",
+    "NSMenu",
+    "NSMenuItem",
+] }
+regex = "1.11"
