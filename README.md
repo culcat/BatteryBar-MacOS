@@ -11,21 +11,12 @@
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
 <br/>
+<br/>
 
-```text
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│  Finder   File   Edit   View   Go   Window   Help         [ 🔋 3:15 (76%) ]  🔍  │
-└───────────────────────────────────────────────────────────────┬──────────────────┘
-                                                                ▼
-                                                ┌─────────────────────────────┐
-                                                │ Battery Level: 76% (Disch.) │
-                                                │ Time Remaining: 3:15        │
-                                                │ Power Source: Battery Power │
-                                                │ ─────────────────────────── │
-                                                │ Updates every 30s           │
-                                                │ Quit                   ⌘Q   │
-                                                └─────────────────────────────┘
-```
+<img src="./assets/screenshot.jpg" alt="BatteryBar macOS Screenshot Preview" width="850" style="border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.3);" />
+
+<br/>
+<br/>
 
 </div>
 
