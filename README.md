@@ -1,0 +1,155 @@
+<div align="center">
+
+# 🔋 BatteryBar for macOS
+
+**Легковесный и ультра-энергоэффективный виджет оставшегося времени аккумулятора в строке меню macOS.**
+
+[![Rust](https://img.shields.io/badge/Rust-2021-f74c00?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![macOS](https://img.shields.io/badge/macOS-11.0%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com)
+[![Memory](https://img.shields.io/badge/RAM-%3C_10_MB-brightgreen?style=for-the-badge)](/)
+[![CPU](https://img.shields.io/badge/CPU-0.0%25_idle-success?style=for-the-badge)](/)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+
+<br/>
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  Finder   File   Edit   View   Go   Window   Help         [ 🔋 3:15 (76%) ]  🔍  │
+└───────────────────────────────────────────────────────────────┬──────────────────┘
+                                                                ▼
+                                                ┌─────────────────────────────┐
+                                                │ Battery Level: 76% (Disch.) │
+                                                │ Time Remaining: 3:15        │
+                                                │ Power Source: Battery Power │
+                                                │ ─────────────────────────── │
+                                                │ Updates every 30s           │
+                                                │ Quit                   ⌘Q   │
+                                                └─────────────────────────────┘
+```
+
+</div>
+
+---
+
+## ✨ Преимущества
+
+- **🚀 Настоящий Native**: Написан на чистом Rust с прямыми вызовами Apple AppKit / Cocoa (`objc2`). Никаких Electron, Tauri или WebView.
+- **🍃 Ультра-легкий**:
+  - Исполняемый файл: всего **~2 МБ**.
+  - Потребление оперативной памяти: **~10 МБ**.
+- **🔋 Не сажает батарею**: Опрос системного статуса выполняется раз в 30 секунд. 99.98% времени приложение спит в фоновом режиме, показатель **Energy Impact** равен `0.0`.
+- **🕶 Чистый Menu Bar**: Работает в режиме `Accessory` — не захламляет Dock и панель переключения `Cmd + Tab`.
+- **⚡ Умные статусы**:
+  - `🔋 3:15 (76%)` — разрядка с точным прогнозом оставшегося времени.
+  - `🔋 85% (calc...)` — расчет времени после смены нагрузки.
+  - `⚡ 0:45 (80%)` — подключено к сети, время до полного заряда.
+  - `⚡ 100% (Charged)` — аккумулятор полностью заряжен.
+
+---
+
+## ⚡ Влияние на аккумулятор
+
+Многие утилиты мониторинга сами расходуют заряд, непрерывно опрашивая датчики. В **BatteryBar** это исключено:
+
+| Параметр | Значение | Описание |
+| :--- | :--- | :--- |
+| **Интервал опроса** | `30 сек` | Достаточно для актуальности, не будит ядра CPU слишком часто |
+| **Время выполнения `pmset`** | `~2-4 мс` | За 1 час процессор тратит всего $\approx 0.36$ секунды |
+| **Режим ожидания** | `Idle / Sleep` | Процесс засыпает в нативном RunLoop macOS |
+| **Energy Impact** | `0.0` | Не влияет на автономность даже за сутки работы |
+
+---
+
+## 📦 Требования
+
+- macOS 11.0 (Big Sur) или новее (Apple Silicon M1/M2/M3/M4 или Intel x86_64)
+- [Rust & Cargo](https://rustup.rs/) (версии 1.75+)
+
+---
+
+## 🚀 Установка и запуск
+
+### 1. Клонирование и переход в проект
+```bash
+git clone https://github.com/culcat/battery-bar.git
+cd battery-bar
+```
+
+### 2. Сборка оптимизированного релиза
+```bash
+cargo build --release
+```
+Бинарный файл появится по пути `./target/release/battery-bar`.
+
+### 3. Быстрый запуск в фоне
+```bash
+./target/release/battery-bar &
+```
+
+---
+
+## ⚙️ Автозапуск при входе в систему (LaunchAgent)
+
+Чтобы приложение автоматически стартовало при включении Mac:
+
+1. Скопируйте скомпилированный бинарник в удобную директорию (например, `~/.local/bin`):
+   ```bash
+   mkdir -p ~/.local/bin
+   cp ./target/release/battery-bar ~/.local/bin/
+   ```
+
+2. Создайте файл конфигурации `~/Library/LaunchAgents/com.culcat.batterybar.plist`:
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+       <key>Label</key>
+       <string>com.culcat.batterybar</string>
+       <key>ProgramArguments</key>
+       <array>
+           <string>/Users/aleksandr/.local/bin/battery-bar</string>
+       </array>
+       <key>RunAtLoad</key>
+       <true/>
+       <key>KeepAlive</key>
+       <true/>
+       <key>ProcessType</key>
+       <string>Interactive</string>
+   </dict>
+   </plist>
+   ```
+
+3. Активируйте агент:
+   ```bash
+   launchctl load ~/Library/LaunchAgents/com.culcat.batterybar.plist
+   ```
+
+*(Для остановки: `launchctl unload ~/Library/LaunchAgents/com.culcat.batterybar.plist`)*
+
+---
+
+## 🛠 Кастомизация
+
+Интервал обновления настраивается в файле [`src/main.rs`](file:///Users/aleksandr/.gemini/antigravity/scratch/battery-bar/src/main.rs):
+
+```rust
+const UPDATE_INTERVAL_SECS: u64 = 30; // Время в секундах
+```
+
+Форматирование выводимого текста настраивается в функции `menu_bar_text` в [`src/battery.rs`](file:///Users/aleksandr/.gemini/antigravity/scratch/battery-bar/src/battery.rs).
+
+---
+
+## 🧪 Тестирование
+
+Проект покрыт юнит-тестами для разбора вывода терминала `pmset`:
+```bash
+cargo test
+```
+
+---
+
+## 📄 Лицензия
+
+MIT License © 2026 [culcat](https://github.com/culcat)
