@@ -1,0 +1,66 @@
+name: Build macOS DMG
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Universal macOS DMG
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install create-dmg
+        run: |
+          brew install create-dmg || true
+
+      - name: Build Apple Silicon binary (aarch64)
+        run: cargo build --release --target aarch64-apple-darwin
+
+      - name: Build Intel binary (x86_64)
+        run: cargo build --release --target x86_64-apple-darwin
+
+      - name: Create Universal 2 Binary (lipo)
+        run: |
+          mkdir -p target/universal/release
+          lipo -create -output target/universal/release/battery-bar \
+            target/aarch64-apple-darwin/release/battery-bar \
+            target/x86_64-apple-darwin/release/battery-bar
+          lipo -info target/universal/release/battery-bar
+
+      - name: Package .dmg installer
+        run: |
+          chmod +x ./scripts/build_dmg.sh
+          ./scripts/build_dmg.sh target/universal/release/battery-bar
+
+      - name: Upload DMG Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BatteryBar-Universal-DMG
+          path: BatteryBar-*.dmg
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: BatteryBar-*.dmg
+          generate_release_notes: true

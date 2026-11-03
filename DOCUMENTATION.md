@@ -95,7 +95,13 @@ cargo build --release
 ./target/release/battery-bar
 ```
 
-### 3. Запуск
+### 3. Сборка пакета и установщика .DMG локально
+```bash
+./scripts/build_dmg.sh
+```
+Скрипт собирает бандл `BatteryBar.app` с нативным `Info.plist` (флаг `LSUIElement = true` для сокрытия из Dock) и упаковывает в `BatteryBar-0.1.0.dmg`.
+
+### 4. Запуск
 ```bash
 ./target/release/battery-bar &
 ```
@@ -110,16 +116,41 @@ cargo build --release
 
 ---
 
+## 🤖 Непрерывная интеграция (GitHub Actions)
+
+В проекте настроен пайплайн [`.github/workflows/build-dmg.yml`](.github/workflows/build-dmg.yml):
+1. **Кросс-компиляция**:
+   - `aarch64-apple-darwin` (Apple Silicon M1/M2/M3/M4)
+   - `x86_64-apple-darwin` (Intel Mac)
+2. **Создание Universal 2 Binary**:
+   - С помощью утилиты `lipo` бинарники объединяются в универсальный файл, работающий на всех поколениях Mac.
+3. **Упаковка DMG**:
+   - Создает `BatteryBar-Universal.dmg` с ярлыком `/Applications` для удобной установки Drag & Drop.
+4. **Релизы**:
+   - При пуше тега `v*` пайплайн автоматически формирует GitHub Release с прикрепленным `.dmg`.
+   - При любом пуше в `main` или ручном запуске артефакт доступен во вкладке *Actions* для скачивания.
+
+---
+
 ## 📂 Структура проекта
 
 ```text
 battery-bar/
-├── Cargo.toml          # Зависимости (objc2, objc2-app-kit, regex)
-├── DOCUMENTATION.md    # Данная документация
-├── .gitignore          # Игнорируемые файлы сборщика
+├── .github/
+│   └── workflows/
+│       └── build-dmg.yml # CI/CD пайплайн сборки DMG в GitHub Actions
+├── assets/
+│   ├── Info.plist        # Метаданные macOS бандла (LSUIElement, идентификаторы)
+│   └── screenshot.jpg    # Превью интерфейса для README
+├── scripts/
+│   └── build_dmg.sh      # Скрипт сборки BatteryBar.app и создания .dmg
+├── Cargo.toml            # Зависимости (objc2, objc2-app-kit, regex)
+├── README.md             # Презентационный файл репозитория
+├── DOCUMENTATION.md      # Данная техническая документация
+├── .gitignore            # Игнорируемые файлы сборщика
 └── src/
-    ├── main.rs         # Инициализация AppKit, Menu Bar, таймер обновлений
-    └── battery.rs      # Логика вызова pmset, парсер вывода и юнит-тесты
+    ├── main.rs           # Инициализация AppKit, Menu Bar, таймер обновлений
+    └── battery.rs        # Логика вызова pmset, парсер вывода и юнит-тесты
 ```
 
 ---

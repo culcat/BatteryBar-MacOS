@@ -6,6 +6,7 @@
 
 [![Rust](https://img.shields.io/badge/Rust-2021-f74c00?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![macOS](https://img.shields.io/badge/macOS-11.0%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com)
+[![Build macOS DMG](https://img.shields.io/github/actions/workflow/status/culcat/BatteryBar-MacOS/build-dmg.yml?branch=main&style=for-the-badge&label=Build%20DMG&logo=github)](https://github.com/culcat/BatteryBar-MacOS/actions/workflows/build-dmg.yml)
 [![Memory](https://img.shields.io/badge/RAM-%3C_10_MB-brightgreen?style=for-the-badge)](/)
 [![CPU](https://img.shields.io/badge/CPU-0.0%25_idle-success?style=for-the-badge)](/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
@@ -60,20 +61,18 @@
 
 ## 🚀 Установка и запуск
 
-### 1. Клонирование и переход в проект
+### Вариант 1. Установка через .DMG (Рекомендуется)
+Скачайте готовый установщик `.dmg` из раздела [Releases](https://github.com/culcat/BatteryBar-MacOS/releases) или соберите его локально:
+```bash
+./scripts/build_dmg.sh
+```
+Откройте созданный файл `BatteryBar-0.1.0.dmg` и перетащите иконку **BatteryBar** в папку **Applications**.
+
+### Вариант 2. Ручная сборка из исходников
 ```bash
 git clone https://github.com/culcat/BatteryBar-MacOS.git
 cd BatteryBar-MacOS
-```
-
-### 2. Сборка оптимизированного релиза
-```bash
 cargo build --release
-```
-Бинарный файл появится по пути `./target/release/battery-bar`.
-
-### 3. Быстрый запуск в фоне
-```bash
 ./target/release/battery-bar &
 ```
 
