@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background Squircle Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E232E" />
+      <stop offset="40%" stop-color="#12161F" />
+      <stop offset="100%" stop-color="#0A0C10" />
+    </linearGradient>
+
+    <!-- Squircle Border Highlight (Inner Bevel) -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.32" />
+      <stop offset="30%" stop-color="#FFFFFF" stop-opacity="0.10" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.02" />
+    </linearGradient>
+
+    <!-- Ambient Emerald Glow -->
+    <radialGradient id="ambientGlow" cx="50%" cy="52%" r="50%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.28" />
+      <stop offset="50%" stop-color="#06B6D4" stop-opacity="0.12" />
+      <stop offset="100%" stop-color="#0B0F17" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Battery Glass Body Gradient -->
+    <linearGradient id="batteryGlass" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.18" />
+      <stop offset="15%" stop-color="#FFFFFF" stop-opacity="0.06" />
+      <stop offset="85%" stop-color="#FFFFFF" stop-opacity="0.04" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.14" />
+    </linearGradient>
+
+    <!-- Battery Body Outline -->
+    <linearGradient id="batteryBorder" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.08" />
+    </linearGradient>
+
+    <!-- Liquid Energy Fluid Gradient -->
+    <linearGradient id="energyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="35%" stop-color="#10B981" />
+      <stop offset="75%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+
+    <!-- Energy Highlight Surface -->
+    <linearGradient id="energySurface" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6EE7B7" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#A7F3D0" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#6EE7B7" stop-opacity="0.8" />
+    </linearGradient>
+
+    <!-- Battery Cap Metallic Gradient -->
+    <linearGradient id="capGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#64748B" />
+      <stop offset="35%" stop-color="#CBD5E1" />
+      <stop offset="50%" stop-color="#F1F5F9" />
+      <stop offset="65%" stop-color="#CBD5E1" />
+      <stop offset="100%" stop-color="#475569" />
+    </linearGradient>
+
+    <!-- Lightning Bolt Gradient -->
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#E0F2FE" />
+    </linearGradient>
+
+    <!-- Drop Shadow Filter for macOS Squircle -->
+    <filter id="squircleShadow" x="-15%" y="-15%" width="130%" height="135%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="32" result="blur1" />
+      <feOffset in="blur1" dx="0" dy="28" result="offset1" />
+      <feComponentTransfer in="offset1" result="shadow1">
+        <feFuncA type="linear" slope="0.45" />
+      </feComponentTransfer>
+
+      <feGaussianBlur in="SourceAlpha" stdDeviation="12" result="blur2" />
+      <feOffset in="blur2" dx="0" dy="10" result="offset2" />
+      <feComponentTransfer in="offset2" result="shadow2">
+        <feFuncA type="linear" slope="0.30" />
+      </feComponentTransfer>
+
+      <feMerge>
+        <feMergeNode in="shadow1" />
+        <feMergeNode in="shadow2" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Neon Energy Glow Filter -->
+    <filter id="energyGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="16" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Bolt Glow -->
+    <filter id="boltGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10" result="glowBlur" />
+      <feComponentTransfer in="glowBlur" result="glowColored">
+        <feFuncR type="linear" slope="0.2" />
+        <feFuncG type="linear" slope="0.9" />
+        <feFuncB type="linear" slope="0.8" />
+        <feFuncA type="linear" slope="0.8" />
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode in="glowColored" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- 1. Squircle Base with Realistic macOS Shadow -->
+  <g filter="url(#squircleShadow)">
+    <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="url(#bgGrad)" />
+    <!-- Outer Bevel Stroke -->
+    <rect x="101" y="101" width="822" height="822" rx="184" ry="184" fill="none" stroke="url(#borderGrad)" stroke-width="2.5" />
+  </g>
+
+  <!-- 2. Ambient Internal Backlight -->
+  <circle cx="512" cy="530" r="340" fill="url(#ambientGlow)" />
+
+  <!-- 3. Battery Terminal Cap (Top) -->
+  <g>
+    <!-- Cap Shadow -->
+    <path d="M 436 226 L 588 226 C 606 226 620 236 620 248 L 620 262 L 404 262 L 404 248 C 404 236 418 226 436 226 Z" fill="#000000" opacity="0.4" />
+    <!-- Cap Body -->
+    <path d="M 436 220 L 588 220 C 606 220 620 230 620 242 L 620 260 L 404 260 L 404 242 C 404 230 418 220 436 220 Z" fill="url(#capGrad)" />
+    <!-- Cap Highlight Bevel -->
+    <path d="M 436 220 L 588 220 C 604 220 616 228 618 238 L 406 238 C 408 228 420 220 436 220 Z" fill="#FFFFFF" opacity="0.45" />
+  </g>
+
+  <!-- 4. Battery Glass Outer Shell -->
+  <g>
+    <!-- Inner Drop Shadow beneath glass body -->
+    <rect x="306" y="258" width="412" height="540" rx="64" ry="64" fill="#06090E" />
+
+    <!-- Outer Glass Tint -->
+    <rect x="306" y="258" width="412" height="540" rx="64" ry="64" fill="url(#batteryGlass)" />
+
+    <!-- Shell Border Stroke -->
+    <rect x="306" y="258" width="412" height="540" rx="64" ry="64" fill="none" stroke="url(#batteryBorder)" stroke-width="4.5" />
+  </g>
+
+  <!-- 5. Internal Battery Energy Core (Liquid Green Energy ~75%) -->
+  <g filter="url(#energyGlow)">
+    <clipPath id="energyClip">
+      <rect x="320" y="272" width="384" height="512" rx="50" ry="50" />
+    </clipPath>
+
+    <g clip-path="url(#energyClip)">
+      <!-- Unfilled Chamber Background -->
+      <rect x="320" y="272" width="384" height="512" fill="#0F141C" opacity="0.8" />
+
+      <!-- Chamber Measurement Tick Marks -->
+      <line x1="332" y1="365" x2="352" y2="365" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="3" stroke-linecap="round" />
+      <line x1="672" y1="365" x2="692" y2="365" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="3" stroke-linecap="round" />
+
+      <line x1="332" y1="465" x2="356" y2="465" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="668" y1="465" x2="692" y2="465" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3.5" stroke-linecap="round" />
+
+      <line x1="332" y1="565" x2="352" y2="565" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="3" stroke-linecap="round" />
+      <line x1="672" y1="565" x2="692" y2="565" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="3" stroke-linecap="round" />
+
+      <line x1="332" y1="665" x2="356" y2="665" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="668" y1="665" x2="692" y2="665" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3.5" stroke-linecap="round" />
+
+      <!-- Energy Block (starts at y=385 to 784) -->
+      <rect x="320" y="388" width="384" height="400" fill="url(#energyGrad)" />
+
+      <!-- Energy Fluid Meniscus / Glowing Top Surface -->
+      <ellipse cx="512" cy="388" rx="192" ry="14" fill="url(#energySurface)" />
+
+      <!-- Inner Ambient Energy Specular Reflection (Left Edge) -->
+      <path d="M 326 395 C 326 395 338 520 338 680 C 338 720 330 760 330 760" stroke="#A7F3D0" stroke-width="4" stroke-linecap="round" opacity="0.4" fill="none" />
+    </g>
+  </g>
+
+  <!-- 6. Charging Lightning Bolt Symbol -->
+  <g filter="url(#boltGlow)">
+    <!-- Shadow for Lightning Bolt -->
+    <polygon points="536,368 456,494 516,494 480,634 576,478 518,478" fill="#022C22" opacity="0.5" transform="translate(0, 5)" />
+    <!-- Vibrant White/Electric Bolt -->
+    <polygon points="536,368 456,494 516,494 480,634 576,478 518,478" fill="url(#boltGrad)" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round" />
+  </g>
+
+  <!-- 7. Glass Cylinder Specular Highlight (Reflection Sheen across front) -->
+  <g clip-path="url(#energyClip)">
+    <path d="M 334 278 L 410 278 L 365 776 L 334 776 Z" fill="#FFFFFF" opacity="0.08" />
+    <path d="M 645 278 L 685 278 L 675 776 L 640 776 Z" fill="#FFFFFF" opacity="0.05" />
+  </g>
+</svg>

@@ -22,8 +22,11 @@ mkdir -p "${DMG_STAGE}"
 cp "${SRC_BINARY}" "${APP_DIR}/Contents/MacOS/${BINARY_NAME}"
 chmod +x "${APP_DIR}/Contents/MacOS/${BINARY_NAME}"
 
-# Copy Info.plist
+# Copy Info.plist and AppIcon
 cp "assets/Info.plist" "${APP_DIR}/Contents/Info.plist"
+if [ -f "assets/AppIcon.icns" ]; then
+    cp "assets/AppIcon.icns" "${APP_DIR}/Contents/Resources/AppIcon.icns"
+fi
 
 # Prepare DMG staging directory
 cp -r "${APP_DIR}" "${DMG_STAGE}/"

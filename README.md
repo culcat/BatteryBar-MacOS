@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🔋 BatteryBar for macOS
+<img src="./assets/logo.png" alt="BatteryBar Logo" width="128" height="128" />
+
+# BatteryBar for macOS
 
 **Легковесный и ультра-энергоэффективный виджет оставшегося времени аккумулятора в строке меню macOS.**
 

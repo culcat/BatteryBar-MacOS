@@ -140,7 +140,10 @@ battery-bar/
 │   └── workflows/
 │       └── build-dmg.yml # CI/CD пайплайн сборки DMG в GitHub Actions
 ├── assets/
+│   ├── AppIcon.icns      # Нативная иконка macOS (.icns)
 │   ├── Info.plist        # Метаданные macOS бандла (LSUIElement, идентификаторы)
+│   ├── logo.png          # Логотип высокого разрешения (1024x1024 PNG)
+│   ├── logo.svg          # Векторный логотип SVG
 │   └── screenshot.jpg    # Превью интерфейса для README
 ├── scripts/
 │   └── build_dmg.sh      # Скрипт сборки BatteryBar.app и создания .dmg
