@@ -3,7 +3,8 @@ set -e
 
 APP_NAME="BatteryBar"
 BINARY_NAME="battery-bar"
-VERSION="0.1.0"
+VERSION=$(grep '^version =' Cargo.toml | head -n1 | cut -d '"' -f2)
+VERSION="${VERSION:-0.1.2}"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 SRC_BINARY="${1:-target/release/${BINARY_NAME}}"
 
