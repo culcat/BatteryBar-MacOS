@@ -1,30 +1,38 @@
 mod battery;
+mod ui;
 mod updater;
 
-use battery::{fetch_battery_info, BatteryInfo};
+use battery::{fetch_battery_info, BatteryInfo, BatteryState, DisplayMode};
 use objc2::rc::Retained;
 use objc2::{declare_class, mutability, sel, ClassType, DeclaredClass};
 use objc2_app_kit::{
-    NSApplication, NSApplicationActivationPolicy, NSMenu, NSMenuItem, NSStatusBar,
+    NSApplication, NSApplicationActivationPolicy, NSCellImagePosition, NSControlStateValueOff,
+    NSControlStateValueOn, NSFont, NSFontWeightRegular, NSMenu, NSMenuItem, NSStatusBar,
     NSStatusItem, NSVariableStatusItemLength,
 };
 use objc2_foundation::{MainThreadBound, MainThreadMarker, NSObject, NSString, run_on_main};
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use ui::{load_sf_symbol, HeaderCardView};
 use updater::{check_for_updates, open_release_url, UpdateInfo};
 
 const UPDATE_INTERVAL_SECS: u64 = 30;
 
 struct MenuRefs {
     status_item: Retained<NSStatusItem>,
-    item_level: Retained<NSMenuItem>,
-    item_time: Retained<NSMenuItem>,
-    item_source: Retained<NSMenuItem>,
+    header_card: HeaderCardView,
+    item_health: Retained<NSMenuItem>,
+    item_cycles: Retained<NSMenuItem>,
+    item_power: Retained<NSMenuItem>,
+    mode_items: [Retained<NSMenuItem>; 4],
     item_update: Retained<NSMenuItem>,
 }
 
 struct AppState {
     menu_refs: MainThreadBound<MenuRefs>,
+    display_mode: Mutex<DisplayMode>,
+    last_battery_info: Mutex<Option<BatteryInfo>>,
     latest_update: Mutex<Option<UpdateInfo>>,
 }
 
@@ -34,32 +42,106 @@ fn get_app_state() -> Option<Arc<AppState>> {
     GLOBAL_STATE.lock().unwrap().clone()
 }
 
-fn update_battery_display(refs: &MenuRefs, info: &BatteryInfo, mtm: MainThreadMarker) {
-    // 1. Status bar button title
+fn update_battery_display(
+    refs: &MenuRefs,
+    info: &BatteryInfo,
+    mode: DisplayMode,
+    mtm: MainThreadMarker,
+) {
+    // 1. Update Menu Bar Status Button (SF Symbol + Monospaced Digit Title)
     if let Some(button) = unsafe { refs.status_item.button(mtm) } {
-        let title = NSString::from_str(&info.menu_bar_text());
-        unsafe { button.setTitle(&title) };
+        let title_str = info.menu_bar_title(mode);
+        unsafe {
+            if let Some(icon) = load_sf_symbol(info.sf_symbol_name(), Some(info.fallback_sf_symbol_name())) {
+                button.setImage(Some(&icon));
+                button.setImagePosition(NSCellImagePosition::NSImageLeading);
+                button.setImageHugsTitle(true);
+            }
+            let font = NSFont::monospacedDigitSystemFontOfSize_weight(13.0, NSFontWeightRegular);
+            button.setFont(Some(&font));
+            button.setTitle(&NSString::from_str(&title_str));
+        }
     }
 
-    // 2. Details menu items
-    let level_str = format!("Battery Level: {}% ({:?})", info.percentage, info.state);
-    unsafe { refs.item_level.setTitle(&NSString::from_str(&level_str)) };
+    // 2. Update Control Center–style Header Card
+    let is_charging = matches!(info.state, BatteryState::Charging | BatteryState::Charged);
+    refs.header_card
+        .progress_bar
+        .update(info.percentage, is_charging);
 
-    let time_str = info.remaining_time.as_deref().unwrap_or("Calculating...");
-    let remaining_str = format!("Time Remaining: {}", time_str);
-    unsafe { refs.item_time.setTitle(&NSString::from_str(&remaining_str)) };
+    unsafe {
+        refs.header_card
+            .percentage_label
+            .setStringValue(&NSString::from_str(&format!("{}%", info.percentage)));
+        refs.header_card
+            .status_label
+            .setStringValue(&NSString::from_str(&info.primary_status_line()));
+        refs.header_card
+            .source_label
+            .setStringValue(&NSString::from_str(&info.source_line()));
+    }
 
-    let source_str = format!("Power Source: {}", info.power_source);
-    unsafe { refs.item_source.setTitle(&NSString::from_str(&source_str)) };
+    // 3. Update Hardware Telemetry Section
+    let health_text = match (
+        info.health_percent,
+        info.nominal_capacity_mah,
+        info.design_capacity_mah,
+    ) {
+        (Some(pct), Some(nom), Some(des)) => {
+            format!("Battery Health: {}% ({} / {} mAh)", pct, nom, des)
+        }
+        (Some(pct), _, _) => format!("Battery Health: {}%", pct),
+        _ => "Battery Health: Normal".to_string(),
+    };
+    unsafe { refs.item_health.setTitle(&NSString::from_str(&health_text)) };
+
+    let cycles_text = match info.cycle_count {
+        Some(c) => format!("Cycle Count: {} cycles", c),
+        None => "Cycle Count: --".to_string(),
+    };
+    unsafe { refs.item_cycles.setTitle(&NSString::from_str(&cycles_text)) };
+
+    let power_text = match (info.power_watts, info.voltage_volts) {
+        (Some(w), Some(v)) if w > 0.05 => {
+            let prefix = if info.state == BatteryState::Charging {
+                "Charging Rate"
+            } else {
+                "Power Draw"
+            };
+            format!("{}: {:.1} W ({:.1} V)", prefix, w, v)
+        }
+        (_, Some(v)) => format!("Voltage: {:.2} V", v),
+        _ => "Power Draw: --".to_string(),
+    };
+    unsafe { refs.item_power.setTitle(&NSString::from_str(&power_text)) };
+}
+
+fn update_mode_checkmarks(refs: &MenuRefs, active_mode: DisplayMode) {
+    let active_idx = match active_mode {
+        DisplayMode::Standard => 0,
+        DisplayMode::Compact => 1,
+        DisplayMode::TimeOnly => 2,
+        DisplayMode::PercentageOnly => 3,
+    };
+    for (idx, item) in refs.mode_items.iter().enumerate() {
+        let state = if idx == active_idx {
+            NSControlStateValueOn
+        } else {
+            NSControlStateValueOff
+        };
+        unsafe { item.setState(state) };
+    }
 }
 
 fn trigger_battery_refresh() {
     std::thread::spawn(|| {
         if let Ok(info) = fetch_battery_info() {
             if let Some(state) = get_app_state() {
+                let mode = *state.display_mode.lock().unwrap();
+                *state.last_battery_info.lock().unwrap() = Some(info.clone());
                 run_on_main(move |mtm| {
                     let refs = state.menu_refs.get(mtm);
-                    update_battery_display(refs, &info, mtm);
+                    update_battery_display(refs, &info, mode, mtm);
                 });
             }
         }
@@ -69,12 +151,14 @@ fn trigger_battery_refresh() {
 fn trigger_check_updates(manual: bool) {
     std::thread::spawn(move || {
         if manual {
-            // Show checking in progress
             if let Some(state) = get_app_state() {
-                let checking_text = "⏳ Checking for updates...";
+                let checking_text = "Checking for Updates…";
                 run_on_main(move |mtm| {
                     let refs = state.menu_refs.get(mtm);
-                    unsafe { refs.item_update.setTitle(&NSString::from_str(checking_text)) };
+                    unsafe {
+                        refs.item_update
+                            .setTitle(&NSString::from_str(checking_text));
+                    };
                 });
             }
         }
@@ -92,19 +176,28 @@ fn trigger_check_updates(manual: bool) {
                     run_on_main(move |mtm| {
                         let refs = state.menu_refs.get(mtm);
                         if is_newer {
-                            let text = format!("✨ Update Available (v{}) — Download", latest_ver);
+                            let text = format!("Update Available (v{}) — Download…", latest_ver);
                             unsafe {
                                 refs.item_update.setTitle(&NSString::from_str(&text));
+                                if let Some(icon) =
+                                    load_sf_symbol("arrow.down.circle.fill", Some("arrow.down.circle"))
+                                {
+                                    refs.item_update.setImage(Some(&icon));
+                                }
                                 refs.item_update.setEnabled(true);
                             };
                             if manual {
                                 open_release_url(&release_url);
                             }
                         } else {
-                            let text = format!("✓ Version {} is up to date", cur_ver);
+                            let text = format!("Up to Date (v{})", cur_ver);
                             unsafe {
                                 refs.item_update.setTitle(&NSString::from_str(&text));
-                                refs.item_update.setEnabled(false);
+                                if let Some(icon) =
+                                    load_sf_symbol("checkmark.circle", Some("checkmark"))
+                                {
+                                    refs.item_update.setImage(Some(&icon));
+                                }
                             };
                         }
                     });
@@ -114,7 +207,7 @@ fn trigger_check_updates(manual: bool) {
                 eprintln!("Failed to check for updates: {}", err);
                 if manual {
                     if let Some(state) = get_app_state() {
-                        let text = "⚠️ Check failed (offline)";
+                        let text = "Update Check Failed (Offline)";
                         run_on_main(move |mtm| {
                             let refs = state.menu_refs.get(mtm);
                             unsafe { refs.item_update.setTitle(&NSString::from_str(text)) };
@@ -158,17 +251,52 @@ declare_class!(
             }
             trigger_check_updates(true);
         }
+
+        #[method(selectDisplayMode:)]
+        fn select_display_mode(&self, sender: &NSMenuItem) {
+            let tag = unsafe { sender.tag() };
+            let new_mode = match tag {
+                1 => DisplayMode::Compact,
+                2 => DisplayMode::TimeOnly,
+                3 => DisplayMode::PercentageOnly,
+                _ => DisplayMode::Standard,
+            };
+
+            if let Some(state) = get_app_state() {
+                *state.display_mode.lock().unwrap() = new_mode;
+                let cached_info = state.last_battery_info.lock().unwrap().clone();
+                run_on_main(move |mtm| {
+                    let refs = state.menu_refs.get(mtm);
+                    update_mode_checkmarks(refs, new_mode);
+                    if let Some(info) = cached_info {
+                        update_battery_display(refs, &info, new_mode, mtm);
+                    }
+                });
+            }
+        }
+
+        #[method(openBatterySettings:)]
+        fn open_battery_settings(&self, _sender: &NSMenuItem) {
+            let _ = Command::new("open")
+                .arg("x-apple.systempreferences:com.apple.Battery-Settings.extension")
+                .spawn();
+        }
     }
 );
+
+fn set_item_sf_symbol(item: &NSMenuItem, primary: &str, fallback: Option<&str>) {
+    if let Some(icon) = load_sf_symbol(primary, fallback) {
+        unsafe { item.setImage(Some(&icon)) };
+    }
+}
 
 fn main() {
     let mtm = MainThreadMarker::new().expect("Must run on main thread");
 
-    // Initialize NSApplication (Accessory mode: only menu bar, no dock)
+    // Initialize NSApplication in Accessory mode (menu bar only, no Dock icon)
     let app = NSApplication::sharedApplication(mtm);
     app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
 
-    // Initialize Action Handler
     let handler: Retained<MenuActionHandler> =
         unsafe { objc2::msg_send_id![MenuActionHandler::alloc(), init] };
 
@@ -177,55 +305,111 @@ fn main() {
     let status_item = unsafe { status_bar.statusItemWithLength(NSVariableStatusItemLength) };
 
     if let Some(button) = unsafe { status_item.button(mtm) } {
-        let initial_title = NSString::from_str("🔋 --:--");
-        unsafe { button.setTitle(&initial_title) };
+        unsafe {
+            if let Some(icon) = load_sf_symbol("battery.100percent", Some("battery.100")) {
+                button.setImage(Some(&icon));
+                button.setImagePosition(NSCellImagePosition::NSImageLeading);
+                button.setImageHugsTitle(true);
+            }
+            let font = NSFont::monospacedDigitSystemFontOfSize_weight(13.0, NSFontWeightRegular);
+            button.setFont(Some(&font));
+            button.setTitle(&NSString::from_str("--%"));
+        }
     }
 
-    // Build Dropdown Menu
+    // Build Native Dropdown Menu
     let menu = NSMenu::new(mtm);
 
-    // 1. Info items
-    let item_level = unsafe {
+    // 1. Control Center–style Custom Header Card
+    let header_card = HeaderCardView::new(mtm);
+    let item_header = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Battery Level: --"),
+            &NSString::from_str(""),
             None,
             &NSString::from_str(""),
         )
     };
-    unsafe { item_level.setEnabled(false) };
-
-    let item_time = unsafe {
-        menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Time Remaining: --"),
-            None,
-            &NSString::from_str(""),
-        )
-    };
-    unsafe { item_time.setEnabled(false) };
-
-    let item_source = unsafe {
-        menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Power Source: --"),
-            None,
-            &NSString::from_str(""),
-        )
-    };
-    unsafe { item_source.setEnabled(false) };
+    unsafe { item_header.setView(Some(&header_card.container)) };
 
     menu.addItem(&NSMenuItem::separatorItem(mtm));
 
-    // 2. Manual Refresh item
+    // 2. Hardware Telemetry Section (with SF Symbols)
+    let item_health = unsafe {
+        menu.addItemWithTitle_action_keyEquivalent(
+            &NSString::from_str("Battery Health: --"),
+            None,
+            &NSString::from_str(""),
+        )
+    };
+    set_item_sf_symbol(&item_health, "bolt.heart", Some("heart"));
+    unsafe { item_health.setEnabled(false) };
+
+    let item_cycles = unsafe {
+        menu.addItemWithTitle_action_keyEquivalent(
+            &NSString::from_str("Cycle Count: --"),
+            None,
+            &NSString::from_str(""),
+        )
+    };
+    set_item_sf_symbol(&item_cycles, "arrow.2.squarepath", Some("repeat"));
+    unsafe { item_cycles.setEnabled(false) };
+
+    let item_power = unsafe {
+        menu.addItemWithTitle_action_keyEquivalent(
+            &NSString::from_str("Power Draw: --"),
+            None,
+            &NSString::from_str(""),
+        )
+    };
+    set_item_sf_symbol(&item_power, "bolt", None);
+    unsafe { item_power.setEnabled(false) };
+
+    menu.addItem(&NSMenuItem::separatorItem(mtm));
+
+    // 3. Menu Bar Display Mode Submenu
+    let item_display_menu = unsafe {
+        menu.addItemWithTitle_action_keyEquivalent(
+            &NSString::from_str("Menu Bar Display"),
+            None,
+            &NSString::from_str(""),
+        )
+    };
+    set_item_sf_symbol(&item_display_menu, "slider.horizontal.3", None);
+
+    let display_submenu = NSMenu::new(mtm);
+    let mode_specs = [
+        (0isize, "Time & Percentage (3h 15m · 76%)"),
+        (1isize, "Compact (3:15 · 76%)"),
+        (2isize, "Time Remaining Only (3h 15m)"),
+        (3isize, "Percentage Only (76%)"),
+    ];
+    let mode_items = mode_specs.map(|(tag, label)| unsafe {
+        let item = display_submenu.addItemWithTitle_action_keyEquivalent(
+            &NSString::from_str(label),
+            Some(sel!(selectDisplayMode:)),
+            &NSString::from_str(""),
+        );
+        item.setTag(tag);
+        item.setTarget(Some(&handler));
+        if tag == 0 {
+            item.setState(NSControlStateValueOn);
+        }
+        item
+    });
+    item_display_menu.setSubmenu(Some(&display_submenu));
+
+    // 4. Action Items (Refresh, Updates, System Settings)
     let item_refresh = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("🔄 Refresh Battery Status"),
+            &NSString::from_str("Refresh Now"),
             Some(sel!(refreshBattery:)),
             &NSString::from_str("r"),
         )
     };
+    set_item_sf_symbol(&item_refresh, "arrow.clockwise", None);
     unsafe { item_refresh.setTarget(Some(&handler)) };
 
-    // 3. Update info item
-    let version_str = format!("⚡ Check for Updates... (v{})", env!("CARGO_PKG_VERSION"));
+    let version_str = format!("Check for Updates… (v{})", env!("CARGO_PKG_VERSION"));
     let item_update = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
             &NSString::from_str(&version_str),
@@ -233,24 +417,29 @@ fn main() {
             &NSString::from_str("u"),
         )
     };
+    set_item_sf_symbol(
+        &item_update,
+        "arrow.triangle.2.circlepath",
+        Some("arrow.clockwise.circle"),
+    );
     unsafe { item_update.setTarget(Some(&handler)) };
+
+    let item_settings = unsafe {
+        menu.addItemWithTitle_action_keyEquivalent(
+            &NSString::from_str("Battery Settings…"),
+            Some(sel!(openBatterySettings:)),
+            &NSString::from_str(","),
+        )
+    };
+    set_item_sf_symbol(&item_settings, "gearshape", Some("gear"));
+    unsafe { item_settings.setTarget(Some(&handler)) };
 
     menu.addItem(&NSMenuItem::separatorItem(mtm));
 
-    // 4. Update Interval hint
-    let item_interval = unsafe {
-        menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str(&format!("Auto-updates every {}s", UPDATE_INTERVAL_SECS)),
-            None,
-            &NSString::from_str(""),
-        )
-    };
-    unsafe { item_interval.setEnabled(false) };
-
-    // 5. Quit item
+    // 5. Quit Item
     unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Quit"),
+            &NSString::from_str("Quit BatteryBar"),
             Some(sel!(terminate:)),
             &NSString::from_str("q"),
         )
@@ -260,14 +449,18 @@ fn main() {
 
     let menu_refs = MenuRefs {
         status_item,
-        item_level,
-        item_time,
-        item_source,
+        header_card,
+        item_health,
+        item_cycles,
+        item_power,
+        mode_items,
         item_update,
     };
 
     let app_state = Arc::new(AppState {
         menu_refs: MainThreadBound::new(menu_refs, mtm),
+        display_mode: Mutex::new(DisplayMode::Standard),
+        last_battery_info: Mutex::new(None),
         latest_update: Mutex::new(None),
     });
 
@@ -275,7 +468,13 @@ fn main() {
 
     // Initial battery fetch
     if let Ok(initial_info) = fetch_battery_info() {
-        update_battery_display(app_state.menu_refs.get(mtm), &initial_info, mtm);
+        *app_state.last_battery_info.lock().unwrap() = Some(initial_info.clone());
+        update_battery_display(
+            app_state.menu_refs.get(mtm),
+            &initial_info,
+            DisplayMode::Standard,
+            mtm,
+        );
     }
 
     // Background thread for periodic battery refresh
@@ -285,16 +484,18 @@ fn main() {
 
             if let Ok(info) = fetch_battery_info() {
                 if let Some(state) = get_app_state() {
+                    let mode = *state.display_mode.lock().unwrap();
+                    *state.last_battery_info.lock().unwrap() = Some(info.clone());
                     run_on_main(move |mtm| {
                         let refs = state.menu_refs.get(mtm);
-                        update_battery_display(refs, &info, mtm);
+                        update_battery_display(refs, &info, mode, mtm);
                     });
                 }
             }
         }
     });
 
-    // Check for updates in background shortly after launch (after 4 seconds)
+    // Check for updates in background shortly after launch
     std::thread::spawn(|| {
         std::thread::sleep(Duration::from_secs(4));
         trigger_check_updates(false);

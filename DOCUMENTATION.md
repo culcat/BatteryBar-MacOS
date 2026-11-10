@@ -64,14 +64,17 @@
    - Состояние (`discharging`, `charging`, `charged`, `ac attached`)
    - Оставшееся время (например, `3:15`)
    - Источник питания (`Battery Power` или `AC Power`)
-3. **Отрисовка в macOS Menu Bar (`main.rs`)**:
-   - Создается элемент `NSStatusItem` системного меню `NSStatusBar::systemStatusBar()`.
-   - В безопасном контексте `objc2` через `run_on_main` заголовок кнопки обновляется на `🔋 3:15 (76%)` или `⚡ 1:20 (45%)`.
-   - В выпадающее меню передаются подробные сведения.
+3. **Нативный UI в стиле macOS Sonoma / Sequoia (`ui.rs`, `main.rs`)**:
+   - **SF Symbols (`NSImage`)**: Иконка в статус-баре и все иконки пунктов меню используют системные монохромные темплейт-символы Apple (`battery.100percent`, `battery.75percent`, `battery.100percent.bolt`, `powerplug.fill`, `bolt.heart`, `arrow.2.squarepath`, `gearshape` и др.) с `setTemplate(true)`, которые автоматически адаптируются под светлую/темную тему и прозрачность обоев.
+   - **Моноширинные цифры (`monospacedDigitSystemFontOfSize_weight`)**: Цифры времени и процентов в меню-баре не «прыгают» по ширине при смене значений.
+   - **Карточка заголовка в стиле Control Center (`HeaderCardView`)**: Верхний элемент `NSMenu` содержит кастомный `NSView` с крупным заголовком **Battery**, процентом заряда справа, плавным капсульным прогресс-баром (`BatteryProgressBarView` на базе `NSBezierPath` с динамическими семантическими цветами `systemGreenColor` / `systemOrangeColor` / `systemRedColor`) и вторичными подписями (`secondaryLabelColor`).
+   - **Аппаратная телеметрия (`ioreg -rc AppleSmartBattery -d 1`)**: Отображение здоровья аккумулятора (`Battery Health` в `%` и `mAh`), числа циклов перезарядки (`Cycle Count`) и текущего энергопотребления в ваттах (`Power Draw: W / V`).
+   - **Выбор формата отображения (`Menu Bar Display`)**: Подменю с чекмарками для переключения формата на лету (`3h 15m · 76%`, `3:15 · 76%`, `3h 15m`, `76%`).
+   - **Быстрый переход в настройки (`Cmd+,`)**: Пункт `Battery Settings…` открывает системный раздел *System Settings → Battery*.
 
 4. **Функционал обновления**:
-   - **Ручное обновление статуса батареи**: Пункт меню `🔄 Refresh Battery Status` (`Cmd+R`) для мгновенного считывания `pmset` без ожидания интервала.
-   - **Проверка обновлений приложения**: Пункт `⚡ Check for Updates...` (`Cmd+U`) и автоматическая фоновая проверка при запуске. Приложение обращается к GitHub API репозитория, сравнивает semver-версии и при наличии новой версии отображает `✨ Update Available (vX.X.X) — Download`, открывая страницу релиза в браузере. Модуль реализован в [`src/updater.rs`](src/updater.rs).
+   - **Ручное обновление статуса батареи**: Пункт меню `Refresh Now` (`Cmd+R`) для мгновенного считывания `pmset` и `ioreg` без ожидания интервала.
+   - **Проверка обновлений приложения**: Пункт `Check for Updates…` (`Cmd+U`) и автоматическая фоновая проверка при запуске. Приложение обращается к GitHub API репозитория, сравнивает semver-версии и при наличии новой версии отображает `Update Available (vX.X.X) — Download…`, открывая страницу релиза в браузере. Модуль реализован в [`src/updater.rs`](src/updater.rs).
 
 ---
 
@@ -157,7 +160,8 @@ battery-bar/
 ├── .gitignore            # Игнорируемые файлы сборщика
 └── src/
     ├── main.rs           # Инициализация AppKit, Menu Bar, обработчики действий меню
-    ├── battery.rs        # Логика вызова pmset, парсер вывода и юнит-тесты
+    ├── ui.rs             # Нативные macOS компоненты: SF Symbols, HeaderCardView, BatteryProgressBarView
+    ├── battery.rs        # Вызов pmset и ioreg, парсинг телеметрии и юнит-тесты
     └── updater.rs        # Проверка релизов GitHub, сравнение semver-версий
 ```
 
