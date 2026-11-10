@@ -12,6 +12,7 @@
 
 [![Rust](https://img.shields.io/badge/Rust-2021-f74c00?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![macOS](https://img.shields.io/badge/macOS-11.0%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com)
+[![Homebrew](https://img.shields.io/badge/Homebrew-culcat%2Ftap-FBB040?style=for-the-badge&logo=homebrew&logoColor=white)](https://github.com/culcat/homebrew-tap)
 [![Build macOS DMG](https://img.shields.io/github/actions/workflow/status/culcat/BatteryBar-MacOS/build-dmg.yml?branch=main&style=for-the-badge&label=Build%20DMG&logo=github)](https://github.com/culcat/BatteryBar-MacOS/actions/workflows/build-dmg.yml)
 [![Memory](https://img.shields.io/badge/RAM-%3C_10_MB-brightgreen?style=for-the-badge)](/)
 [![CPU](https://img.shields.io/badge/CPU-0.0%25_idle-success?style=for-the-badge)](/)
@@ -70,14 +71,26 @@
 
 ## 🚀 Установка и запуск
 
-### Вариант 1. Установка через .DMG (Рекомендуется)
+### Вариант 1. Установка через Homebrew (Рекомендуется)
+Установите готовое приложение `BatteryBar.app` прямо в папку `/Applications` через официальный [Homebrew Tap](https://github.com/culcat/homebrew-tap):
+```bash
+brew tap culcat/tap
+brew install --cask battery-bar
+```
+Или одной командой:
+```bash
+brew install --cask culcat/tap/battery-bar
+```
+*(Также доступна установка через Formula с фоновым сервисом: `brew install culcat/tap/battery-bar && brew services start battery-bar`)*
+
+### Вариант 2. Установка через .DMG
 Скачайте готовый установщик `.dmg` из раздела [Releases](https://github.com/culcat/BatteryBar-MacOS/releases) или соберите его локально:
 ```bash
 ./scripts/build_dmg.sh
 ```
 Откройте созданный файл `BatteryBar-0.2.0.dmg` и перетащите иконку **BatteryBar** в папку **Applications**.
 
-### Вариант 2. Ручная сборка из исходников
+### Вариант 3. Ручная сборка из исходников
 ```bash
 git clone https://github.com/culcat/BatteryBar-MacOS.git
 cd BatteryBar-MacOS

@@ -12,6 +12,7 @@
 
 [![Rust](https://img.shields.io/badge/Rust-2021-f74c00?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![macOS](https://img.shields.io/badge/macOS-11.0%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com)
+[![Homebrew](https://img.shields.io/badge/Homebrew-culcat%2Ftap-FBB040?style=for-the-badge&logo=homebrew&logoColor=white)](https://github.com/culcat/homebrew-tap)
 [![Build macOS DMG](https://img.shields.io/github/actions/workflow/status/culcat/BatteryBar-MacOS/build-dmg.yml?branch=main&style=for-the-badge&label=Build%20DMG&logo=github)](https://github.com/culcat/BatteryBar-MacOS/actions/workflows/build-dmg.yml)
 [![Memory](https://img.shields.io/badge/RAM-%3C_10_MB-brightgreen?style=for-the-badge)](/)
 [![CPU](https://img.shields.io/badge/CPU-0.0%25_idle-success?style=for-the-badge)](/)
@@ -70,14 +71,26 @@ Many battery utilities ironically drain the battery by polling hardware sensors 
 
 ## 🚀 Installation & Usage
 
-### Option 1: Install via .DMG (Recommended)
+### Option 1: Install via Homebrew (Recommended)
+Install the prebuilt native `.app` bundle directly into `/Applications` using the official [Homebrew Tap](https://github.com/culcat/homebrew-tap):
+```bash
+brew tap culcat/tap
+brew install --cask battery-bar
+```
+Or in a single command:
+```bash
+brew install --cask culcat/tap/battery-bar
+```
+*(Alternatively, you can install via Formula and run it as a background service: `brew install culcat/tap/battery-bar && brew services start battery-bar`)*
+
+### Option 2: Install via .DMG
 Download the latest `.dmg` installer from [Releases](https://github.com/culcat/BatteryBar-MacOS/releases) or build it locally:
 ```bash
 ./scripts/build_dmg.sh
 ```
 Open the generated `BatteryBar-0.2.0.dmg` and drag **BatteryBar** into your **Applications** folder.
 
-### Option 2: Build from Source
+### Option 3: Build from Source
 ```bash
 git clone https://github.com/culcat/BatteryBar-MacOS.git
 cd BatteryBar-MacOS

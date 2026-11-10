@@ -88,6 +88,16 @@
 
 ## 🚀 Сборка и запуск
 
+### 0. Установка через Homebrew (Рекомендуется)
+```bash
+brew tap culcat/tap
+brew install --cask battery-bar
+```
+Или одной командой:
+```bash
+brew install --cask culcat/tap/battery-bar
+```
+
 ### 1. Запуск тестов
 ```bash
 cargo test

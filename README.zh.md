@@ -12,6 +12,7 @@
 
 [![Rust](https://img.shields.io/badge/Rust-2021-f74c00?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![macOS](https://img.shields.io/badge/macOS-11.0%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com)
+[![Homebrew](https://img.shields.io/badge/Homebrew-culcat%2Ftap-FBB040?style=for-the-badge&logo=homebrew&logoColor=white)](https://github.com/culcat/homebrew-tap)
 [![Build macOS DMG](https://img.shields.io/github/actions/workflow/status/culcat/BatteryBar-MacOS/build-dmg.yml?branch=main&style=for-the-badge&label=Build%20DMG&logo=github)](https://github.com/culcat/BatteryBar-MacOS/actions/workflows/build-dmg.yml)
 [![Memory](https://img.shields.io/badge/RAM-%3C_10_MB-brightgreen?style=for-the-badge)](/)
 [![CPU](https://img.shields.io/badge/CPU-0.0%25_idle-success?style=for-the-badge)](/)
@@ -70,14 +71,26 @@
 
 ## 🚀 安装与运行
 
-### 方式一：通过 .DMG 安装包安装（推荐）
+### 方式一：通过 Homebrew 安装（推荐）
+通过官方 [Homebrew Tap](https://github.com/culcat/homebrew-tap) 将原生 `BatteryBar.app` 直接安装至 `/Applications`：
+```bash
+brew tap culcat/tap
+brew install --cask battery-bar
+```
+或者使用单行命令安装：
+```bash
+brew install --cask culcat/tap/battery-bar
+```
+*（也可通过 Formula 安装并作为后台服务启动：`brew install culcat/tap/battery-bar && brew services start battery-bar`）*
+
+### 方式二：通过 .DMG 安装包安装
 从 [Releases](https://github.com/culcat/BatteryBar-MacOS/releases) 页面下载最新的 `.dmg` 安装包，或在本地打包：
 ```bash
 ./scripts/build_dmg.sh
 ```
 打开生成的 `BatteryBar-0.2.0.dmg`，将 **BatteryBar** 拖拽至 **Applications（应用程序）** 文件夹即可。
 
-### 方式二：从源码编译运行
+### 方式三：从源码编译运行
 ```bash
 git clone https://github.com/culcat/BatteryBar-MacOS.git
 cd BatteryBar-MacOS

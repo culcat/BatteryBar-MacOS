@@ -12,6 +12,7 @@
 
 [![Rust](https://img.shields.io/badge/Rust-2021-f74c00?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![macOS](https://img.shields.io/badge/macOS-11.0%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com)
+[![Homebrew](https://img.shields.io/badge/Homebrew-culcat%2Ftap-FBB040?style=for-the-badge&logo=homebrew&logoColor=white)](https://github.com/culcat/homebrew-tap)
 [![Build macOS DMG](https://img.shields.io/github/actions/workflow/status/culcat/BatteryBar-MacOS/build-dmg.yml?branch=main&style=for-the-badge&label=Build%20DMG&logo=github)](https://github.com/culcat/BatteryBar-MacOS/actions/workflows/build-dmg.yml)
 [![Memory](https://img.shields.io/badge/RAM-%3C_10_MB-brightgreen?style=for-the-badge)](/)
 [![CPU](https://img.shields.io/badge/CPU-0.0%25_idle-success?style=for-the-badge)](/)
@@ -70,14 +71,26 @@ Muchas utilidades de monitoreo consumen batería al consultar los sensores cada 
 
 ## 🚀 Instalación y uso
 
-### Opción 1: Instalar mediante .DMG (Recomendado)
+### Opción 1: Instalar mediante Homebrew (Recomendado)
+Instala directamente la aplicación `BatteryBar.app` en `/Applications` usando el [Tap oficial de Homebrew](https://github.com/culcat/homebrew-tap):
+```bash
+brew tap culcat/tap
+brew install --cask battery-bar
+```
+O en un solo comando:
+```bash
+brew install --cask culcat/tap/battery-bar
+```
+*(Alternativamente, puedes instalar mediante Formula con servicio en segundo plano: `brew install culcat/tap/battery-bar && brew services start battery-bar`)*
+
+### Opción 2: Instalar mediante .DMG
 Descarga el instalador `.dmg` desde la sección [Releases](https://github.com/culcat/BatteryBar-MacOS/releases) o constrúyelo localmente:
 ```bash
 ./scripts/build_dmg.sh
 ```
 Abre el archivo `BatteryBar-0.2.0.dmg` generado y arrastra **BatteryBar** a la carpeta **Applications**.
 
-### Opción 2: Compilar desde el código fuente
+### Opción 3: Compilar desde el código fuente
 ```bash
 git clone https://github.com/culcat/BatteryBar-MacOS.git
 cd BatteryBar-MacOS
