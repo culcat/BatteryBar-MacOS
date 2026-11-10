@@ -39,7 +39,11 @@ battery-bar/
 ├── Cargo.toml                  # Rust crate manifest & AppKit/Foundation feature flags
 ├── AGENTS.md                   # This agent guide & project rules
 ├── DOCUMENTATION.md            # Technical & architectural documentation (Russian)
-├── README.md                   # Repository landing page
+├── README.md                   # Repository landing page (English default)
+├── README.ru.md                # Russian translation of README
+├── README.fr.md                # French translation of README
+├── README.es.md                # Spanish translation of README
+├── README.zh.md                # Simplified Chinese translation of README
 ├── .github/workflows/
 │   └── build-dmg.yml           # CI/CD: Universal 2 binary (lipo) + .dmg + GitHub Releases
 ├── assets/
@@ -52,6 +56,7 @@ battery-bar/
 │   └── generate_icon.py        # Supersampled Pillow generator for assets/logo.png
 └── src/
     ├── main.rs                 # AppKit lifecycle, NSMenu wiring, MenuActionHandler, threads
+    ├── i18n.rs                 # System locale detection (AppleLanguages/LANG) & translations (en, ru, fr, es, zh)
     ├── ui.rs                   # Native Sonoma/Sequoia UI: HeaderCardView, BatteryProgressBarView, SF Symbols
     ├── battery.rs              # pmset & ioreg parsers, DisplayMode formatting, unit tests
     └── updater.rs              # GitHub Releases semver update checker & browser launcher
@@ -61,7 +66,8 @@ battery-bar/
 
 | Module | Key Types & Functions | Responsibility |
 | :--- | :--- | :--- |
-| [`src/main.rs`](./src/main.rs) | `AppState`, `MenuRefs`, `MenuActionHandler`, `update_battery_display` | Initializes `NSApplication`, builds the `NSMenu` hierarchy, handles Objective-C action selectors (`refreshBattery:`, `checkUpdates:`, `selectDisplayMode:`, `openBatterySettings:`), and dispatches UI updates onto the main thread via `run_on_main`. |
+| [`src/main.rs`](./src/main.rs) | `AppState`, `MenuRefs`, `MenuActionHandler`, `update_battery_display`, `update_static_menu_labels` | Initializes `NSApplication`, builds the `NSMenu` hierarchy, handles Objective-C action selectors (`refreshBattery:`, `checkUpdates:`, `selectDisplayMode:`, `selectLanguage:`, `openBatterySettings:`), and dispatches UI updates onto the main thread via `run_on_main`. |
+| [`src/i18n.rs`](./src/i18n.rs) | `Language`, `Language::detect_system`, `Language::parse_apple_languages`, `Language::from_locale_str` | Detects the user's macOS language via `defaults read -g AppleLanguages` (with `LC_ALL`/`LC_MESSAGES`/`LANG` fallback, defaulting to `Language::En`) and provides localized strings for English, Russian, French, Spanish, and Simplified Chinese. |
 | [`src/ui.rs`](./src/ui.rs) | `HeaderCardView`, `BatteryProgressBarView`, `load_sf_symbol` | Implements the macOS Control Center–style top card (`276×96 pt`) and custom capsule progress bar (`drawRect:` with `NSBezierPath`), plus adaptive monochrome SF Symbols (`setTemplate(true)`). |
 | [`src/battery.rs`](./src/battery.rs) | `BatteryInfo`, `BatteryState`, `DisplayMode`, `fetch_battery_info`, `parse_pmset_output`, `enrich_with_ioreg` | Runs `pmset -g batt` and `ioreg -rc AppleSmartBattery -d 1`, parses percentage, state, remaining time, cycle count, health (`NominalChargeCapacity / DesignCapacity`), voltage, and wattage. |
 | [`src/updater.rs`](./src/updater.rs) | `UpdateInfo`, `check_for_updates`, `parse_github_release`, `is_newer_version` | Queries `https://api.github.com/repos/culcat/BatteryBar-MacOS/releases/latest` via `curl --max-time 5`, compares semantic versions, and opens the release URL via `open`. |

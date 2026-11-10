@@ -4,7 +4,11 @@
 
 # BatteryBar for macOS
 
-**Легковесный и ультра-энергоэффективный виджет оставшегося времени аккумулятора в строке меню macOS.**
+**Ultra-lightweight, energy-efficient native macOS Menu Bar widget displaying battery time remaining and hardware telemetry.**
+
+🌐 **English** | [Русский](./README.ru.md) | [Français](./README.fr.md) | [Español](./README.es.md) | [简体中文](./README.zh.md)
+
+<br/>
 
 [![Rust](https://img.shields.io/badge/Rust-2021-f74c00?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![macOS](https://img.shields.io/badge/macOS-11.0%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](https://apple.com)
@@ -25,54 +29,55 @@
 
 ---
 
-## ✨ Преимущества
+## ✨ Key Features
 
-- **🚀 Настоящий Native**: Написан на чистом Rust с прямыми вызовами Apple AppKit / Cocoa (`objc2`). Никаких Electron, Tauri или WebView.
-- **🍃 Ультра-легкий**:
-  - Исполняемый файл: всего **~2 МБ**.
-  - Потребление оперативной памяти: **~10 МБ**.
-- **🔋 Не сажает батарею**: Опрос системного статуса выполняется раз в 30 секунд. 99.98% времени приложение спит в фоновом режиме, показатель **Energy Impact** равен `0.0`.
-- **🕶 Чистый Menu Bar**: Работает в режиме `Accessory` — не захламляет Dock и панель переключения `Cmd + Tab`.
-- **🎨 Эталонный дизайн macOS Sonoma / Sequoia**:
-  - **Системные иконки SF Symbols**: Монохромные адаптивные векторные иконки (`battery.100percent`, `battery.100percent.bolt`, `powerplug.fill` и др.), автоматически подстраивающиеся под светлые/темные обои.
-  - **Карточка Control Center**: Кастомный нативный `NSView` в шапке меню с капсульным индикатором заряда (`NSBezierPath`), плавно меняющим цвет (зеленый / оранжевый / красный), и системной типографикой San Francisco (`monospacedDigitSystemFont`).
-  - **Расширенная телеметрия (`ioreg`)**: Отображение здоровья аккумулятора (`Battery Health` в `%` и `mAh`), циклов перезарядки (`Cycle Count`) и текущей мощности (`Power Draw` в Ваттах и Вольтах).
-  - **Гибкие режимы отображения**: Переключение формата прямо из подменю `Menu Bar Display` (`3h 15m · 76%`, `3:15 · 76%`, `3h 15m` или `76%`).
-- **🔄 Ручное обновление (`⌘R`) и Настройки (`⌘,`)**: Мгновенное обновление статуса и быстрый переход в системные настройки батареи macOS.
-- **✨ Проверка обновлений (`⌘U`)**: Встроенный апдейтер с автоматической и ручной проверкой новых релизов на GitHub.
+- **🚀 Truly Native**: Written in pure Rust with direct Apple AppKit / Cocoa bindings (`objc2`). Zero Electron, Tauri, or WebView bloat.
+- **🍃 Ultra-Lightweight**:
+  - Binary size: only **~2 MB**.
+  - RAM footprint: **~10 MB**.
+- **🔋 Zero Battery Drain**: Polls system status once every 30 seconds. Sleeps 99.98% of the time with an Activity Monitor **Energy Impact** of `0.0`.
+- **🕶 Clean Menu Bar**: Runs in `Accessory` mode — never clutters your Dock or `Cmd + Tab` app switcher.
+- **🌍 Multi-Language Support (i18n)**: Automatically detects your macOS system language (**English, Russian, French, Spanish, Chinese**) and allows live language switching directly from the menu.
+- **🎨 Native macOS Sonoma / Sequoia Design**:
+  - **Apple SF Symbols**: Adaptive monochrome vector icons (`battery.100percent`, `battery.100percent.bolt`, `powerplug.fill`, etc.) that automatically adapt to Light and Dark Mode wallpapers.
+  - **Control Center Header Card**: Custom native `NSView` at the top of the menu with a smooth capsule progress bar (`NSBezierPath`) that transitions dynamically between green, orange, and red, paired with San Francisco `monospacedDigitSystemFont`.
+  - **Hardware Telemetry (`ioreg`)**: Displays **Battery Health** (`%` and `mAh`), **Cycle Count**, and real-time **Power Draw / Charging Rate** (Watts & Volts).
+  - **Flexible Display Modes**: Switch formats on the fly via `Menu Bar Display` (`3h 15m · 76%`, `3:15 · 76%`, `3h 15m`, or `76%`).
+- **🔄 Instant Refresh (`⌘R`) & Battery Settings (`⌘,`)**: Refresh telemetry immediately or jump straight to macOS System Settings → Battery.
+- **✨ Built-in Updater (`⌘U`)**: Automatic and manual GitHub Releases update checker.
 
 ---
 
-## ⚡ Влияние на аккумулятор
+## ⚡ Energy Impact
 
-Многие утилиты мониторинга сами расходуют заряд, непрерывно опрашивая датчики. В **BatteryBar** это исключено:
+Many battery utilities ironically drain the battery by polling hardware sensors every second. **BatteryBar** is engineered to have zero impact:
 
-| Параметр | Значение | Описание |
+| Metric | Value | Description |
 | :--- | :--- | :--- |
-| **Интервал опроса** | `30 сек` | Достаточно для актуальности, не будит ядра CPU слишком часто |
-| **Время выполнения `pmset`** | `~2-4 мс` | За 1 час процессор тратит всего $\approx 0.36$ секунды |
-| **Режим ожидания** | `Idle / Sleep` | Процесс засыпает в нативном RunLoop macOS |
-| **Energy Impact** | `0.0` | Не влияет на автономность даже за сутки работы |
+| **Polling Interval** | `30 sec` | Keeps estimates accurate without waking CPU cores out of deep sleep |
+| **`pmset` Execution Time** | `~2–4 ms` | Uses only $\approx 0.36$ seconds of CPU time per hour |
+| **Idle State** | `Idle / Sleep` | Sleeps natively inside the macOS Cocoa RunLoop |
+| **Energy Impact** | `0.0` | Zero measurable impact on battery runtime |
 
 ---
 
-## 📦 Требования
+## 📦 Requirements
 
-- macOS 11.0 (Big Sur) или новее (Apple Silicon M1/M2/M3/M4 или Intel x86_64)
-- [Rust & Cargo](https://rustup.rs/) (версии 1.75+)
+- macOS 11.0 (Big Sur) or later (Apple Silicon M1/M2/M3/M4 or Intel x86_64)
+- [Rust & Cargo](https://rustup.rs/) (1.75+ if building from source)
 
 ---
 
-## 🚀 Установка и запуск
+## 🚀 Installation & Usage
 
-### Вариант 1. Установка через .DMG (Рекомендуется)
-Скачайте готовый установщик `.dmg` из раздела [Releases](https://github.com/culcat/BatteryBar-MacOS/releases) или соберите его локально:
+### Option 1: Install via .DMG (Recommended)
+Download the latest `.dmg` installer from [Releases](https://github.com/culcat/BatteryBar-MacOS/releases) or build it locally:
 ```bash
 ./scripts/build_dmg.sh
 ```
-Откройте созданный файл `BatteryBar-0.1.0.dmg` и перетащите иконку **BatteryBar** в папку **Applications**.
+Open the generated `BatteryBar-0.2.0.dmg` and drag **BatteryBar** into your **Applications** folder.
 
-### Вариант 2. Ручная сборка из исходников
+### Option 2: Build from Source
 ```bash
 git clone https://github.com/culcat/BatteryBar-MacOS.git
 cd BatteryBar-MacOS
@@ -82,17 +87,17 @@ cargo build --release
 
 ---
 
-## ⚙️ Автозапуск при входе в систему (LaunchAgent)
+## ⚙️ Launch at Login (LaunchAgent)
 
-Чтобы приложение автоматически стартовало при включении Mac:
+To start **BatteryBar** automatically when you log in to macOS:
 
-1. Скопируйте скомпилированный бинарник в удобную директорию (например, `~/.local/bin`):
+1. Copy the compiled binary to `~/.local/bin`:
    ```bash
    mkdir -p ~/.local/bin
    cp ./target/release/battery-bar ~/.local/bin/
    ```
 
-2. Создайте файл конфигурации `~/Library/LaunchAgents/com.culcat.batterybar.plist`:
+2. Create `~/Library/LaunchAgents/com.culcat.batterybar.plist`:
    ```xml
    <?xml version="1.0" encoding="UTF-8"?>
    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -102,7 +107,7 @@ cargo build --release
        <string>com.culcat.batterybar</string>
        <key>ProgramArguments</key>
        <array>
-           <string>/Users/aleksandr/.local/bin/battery-bar</string>
+           <string>/Users/YOUR_USERNAME/.local/bin/battery-bar</string>
        </array>
        <key>RunAtLoad</key>
        <true/>
@@ -114,36 +119,36 @@ cargo build --release
    </plist>
    ```
 
-3. Активируйте агент:
+3. Load the agent:
    ```bash
    launchctl load ~/Library/LaunchAgents/com.culcat.batterybar.plist
    ```
 
-*(Для остановки: `launchctl unload ~/Library/LaunchAgents/com.culcat.batterybar.plist`)*
+*(To stop: `launchctl unload ~/Library/LaunchAgents/com.culcat.batterybar.plist`)*
 
 ---
 
-## 🛠 Кастомизация
+## 🛠 Customization
 
-Интервал обновления настраивается в файле [`src/main.rs`](file:///Users/aleksandr/.gemini/antigravity/scratch/battery-bar/src/main.rs):
+The polling interval can be configured in [`src/main.rs`](./src/main.rs):
 
 ```rust
-const UPDATE_INTERVAL_SECS: u64 = 30; // Время в секундах
+const UPDATE_INTERVAL_SECS: u64 = 30; // Interval in seconds
 ```
 
-Форматирование выводимого текста настраивается в функции `menu_bar_text` в [`src/battery.rs`](file:///Users/aleksandr/.gemini/antigravity/scratch/battery-bar/src/battery.rs).
+Menu bar formatting and telemetry parsing are located in [`src/battery.rs`](./src/battery.rs), and translations are in [`src/i18n.rs`](./src/i18n.rs).
 
 ---
 
-## 🧪 Тестирование
+## 🧪 Testing
 
-Проект покрыт юнит-тестами для разбора вывода терминала `pmset`:
+Run the unit test suite (covers `pmset` parsing, `ioreg` telemetry enrichment, semver comparison, and locale detection):
 ```bash
 cargo test
 ```
 
 ---
 
-## 📄 Лицензия
+## 📄 License
 
 MIT License © 2026 [culcat](https://github.com/culcat)

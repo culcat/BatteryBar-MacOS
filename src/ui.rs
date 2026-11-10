@@ -96,6 +96,7 @@ impl BatteryProgressBarView {
 /// Native Control Center–style Battery Header Card embedded at the top of NSMenu
 pub struct HeaderCardView {
     pub container: Retained<NSView>,
+    pub title_label: Retained<NSTextField>,
     pub percentage_label: Retained<NSTextField>,
     pub progress_bar: Retained<BatteryProgressBarView>,
     pub status_label: Retained<NSTextField>,
@@ -117,7 +118,7 @@ impl HeaderCardView {
             let title_label = NSTextField::labelWithString(&NSString::from_str("Battery"), mtm);
             title_label.setFrame(NSRect::new(
                 NSPoint::new(pad_x, 68.0),
-                NSSize::new(140.0, 20.0),
+                NSSize::new(165.0, 20.0),
             ));
             let bold_font = NSFont::boldSystemFontOfSize(13.5);
             title_label.setFont(Some(&bold_font));
@@ -128,8 +129,8 @@ impl HeaderCardView {
             // 2. Right Percentage Label ("76%")
             let percentage_label = NSTextField::labelWithString(&NSString::from_str("--%"), mtm);
             percentage_label.setFrame(NSRect::new(
-                NSPoint::new(width - pad_x - 90.0, 68.0),
-                NSSize::new(90.0, 20.0),
+                NSPoint::new(width - pad_x - 80.0, 68.0),
+                NSSize::new(80.0, 20.0),
             ));
             let pct_font =
                 NSFont::monospacedDigitSystemFontOfSize_weight(13.5, NSFontWeightSemibold);
@@ -164,12 +165,14 @@ impl HeaderCardView {
                 NSSize::new(inner_w, 16.0),
             ));
             let sub_font_2 = NSFont::systemFontOfSize_weight(11.5, NSFontWeightRegular);
+            status_label.setFont(Some(&sub_font_1));
             source_label.setFont(Some(&sub_font_2));
             source_label.setTextColor(Some(&secondary_color));
             container.addSubview(&source_label);
 
             Self {
                 container,
+                title_label,
                 percentage_label,
                 progress_bar,
                 status_label,

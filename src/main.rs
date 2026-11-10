@@ -1,8 +1,10 @@
 mod battery;
+mod i18n;
 mod ui;
 mod updater;
 
 use battery::{fetch_battery_info, BatteryInfo, BatteryState, DisplayMode};
+use i18n::Language;
 use objc2::rc::Retained;
 use objc2::{declare_class, mutability, sel, ClassType, DeclaredClass};
 use objc2_app_kit::{
@@ -25,13 +27,20 @@ struct MenuRefs {
     item_health: Retained<NSMenuItem>,
     item_cycles: Retained<NSMenuItem>,
     item_power: Retained<NSMenuItem>,
+    item_display_menu: Retained<NSMenuItem>,
     mode_items: [Retained<NSMenuItem>; 4],
+    item_lang_menu: Retained<NSMenuItem>,
+    lang_items: [Retained<NSMenuItem>; 5],
+    item_refresh: Retained<NSMenuItem>,
     item_update: Retained<NSMenuItem>,
+    item_settings: Retained<NSMenuItem>,
+    item_quit: Retained<NSMenuItem>,
 }
 
 struct AppState {
     menu_refs: MainThreadBound<MenuRefs>,
     display_mode: Mutex<DisplayMode>,
+    language: Mutex<Language>,
     last_battery_info: Mutex<Option<BatteryInfo>>,
     latest_update: Mutex<Option<UpdateInfo>>,
 }
@@ -42,17 +51,60 @@ fn get_app_state() -> Option<Arc<AppState>> {
     GLOBAL_STATE.lock().unwrap().clone()
 }
 
+fn update_static_menu_labels(
+    refs: &MenuRefs,
+    lang: Language,
+    latest_update: Option<&UpdateInfo>,
+) {
+    unsafe {
+        refs.header_card
+            .title_label
+            .setStringValue(&NSString::from_str(lang.battery_title()));
+
+        refs.item_display_menu
+            .setTitle(&NSString::from_str(lang.menu_bar_display()));
+
+        let mode_labels = lang.display_mode_labels();
+        for (item, label) in refs.mode_items.iter().zip(mode_labels.iter()) {
+            item.setTitle(&NSString::from_str(label));
+        }
+
+        refs.item_lang_menu
+            .setTitle(&NSString::from_str(lang.language_menu_title()));
+
+        refs.item_refresh
+            .setTitle(&NSString::from_str(lang.refresh_now()));
+
+        let update_text = match latest_update {
+            Some(u) if u.has_update => lang.update_available(&u.latest_version),
+            Some(u) => lang.up_to_date(&u.current_version),
+            None => lang.check_for_updates(env!("CARGO_PKG_VERSION")),
+        };
+        refs.item_update
+            .setTitle(&NSString::from_str(&update_text));
+
+        refs.item_settings
+            .setTitle(&NSString::from_str(lang.battery_settings()));
+
+        refs.item_quit
+            .setTitle(&NSString::from_str(lang.quit_app()));
+    }
+}
+
 fn update_battery_display(
     refs: &MenuRefs,
     info: &BatteryInfo,
     mode: DisplayMode,
+    lang: Language,
     mtm: MainThreadMarker,
 ) {
     // 1. Update Menu Bar Status Button (SF Symbol + Monospaced Digit Title)
     if let Some(button) = unsafe { refs.status_item.button(mtm) } {
-        let title_str = info.menu_bar_title(mode);
+        let title_str = info.menu_bar_title_localized(mode, lang);
         unsafe {
-            if let Some(icon) = load_sf_symbol(info.sf_symbol_name(), Some(info.fallback_sf_symbol_name())) {
+            if let Some(icon) =
+                load_sf_symbol(info.sf_symbol_name(), Some(info.fallback_sf_symbol_name()))
+            {
                 button.setImage(Some(&icon));
                 button.setImagePosition(NSCellImagePosition::NSImageLeading);
                 button.setImageHugsTitle(true);
@@ -71,48 +123,35 @@ fn update_battery_display(
 
     unsafe {
         refs.header_card
+            .title_label
+            .setStringValue(&NSString::from_str(lang.battery_title()));
+        refs.header_card
             .percentage_label
             .setStringValue(&NSString::from_str(&format!("{}%", info.percentage)));
-        refs.header_card
-            .status_label
-            .setStringValue(&NSString::from_str(&info.primary_status_line()));
+        refs.header_card.status_label.setStringValue(
+            &NSString::from_str(&info.primary_status_line_localized(lang)),
+        );
         refs.header_card
             .source_label
-            .setStringValue(&NSString::from_str(&info.source_line()));
+            .setStringValue(&NSString::from_str(&info.source_line_localized(lang)));
     }
 
     // 3. Update Hardware Telemetry Section
-    let health_text = match (
+    let health_text = lang.battery_health(
         info.health_percent,
         info.nominal_capacity_mah,
         info.design_capacity_mah,
-    ) {
-        (Some(pct), Some(nom), Some(des)) => {
-            format!("Battery Health: {}% ({} / {} mAh)", pct, nom, des)
-        }
-        (Some(pct), _, _) => format!("Battery Health: {}%", pct),
-        _ => "Battery Health: Normal".to_string(),
-    };
+    );
     unsafe { refs.item_health.setTitle(&NSString::from_str(&health_text)) };
 
-    let cycles_text = match info.cycle_count {
-        Some(c) => format!("Cycle Count: {} cycles", c),
-        None => "Cycle Count: --".to_string(),
-    };
+    let cycles_text = lang.cycle_count(info.cycle_count);
     unsafe { refs.item_cycles.setTitle(&NSString::from_str(&cycles_text)) };
 
-    let power_text = match (info.power_watts, info.voltage_volts) {
-        (Some(w), Some(v)) if w > 0.05 => {
-            let prefix = if info.state == BatteryState::Charging {
-                "Charging Rate"
-            } else {
-                "Power Draw"
-            };
-            format!("{}: {:.1} W ({:.1} V)", prefix, w, v)
-        }
-        (_, Some(v)) => format!("Voltage: {:.2} V", v),
-        _ => "Power Draw: --".to_string(),
-    };
+    let power_text = lang.power_metrics(
+        info.power_watts,
+        info.voltage_volts,
+        info.state == BatteryState::Charging,
+    );
     unsafe { refs.item_power.setTitle(&NSString::from_str(&power_text)) };
 }
 
@@ -133,15 +172,34 @@ fn update_mode_checkmarks(refs: &MenuRefs, active_mode: DisplayMode) {
     }
 }
 
+fn update_language_checkmarks(refs: &MenuRefs, active_lang: Language) {
+    let active_idx = match active_lang {
+        Language::En => 0,
+        Language::Ru => 1,
+        Language::Fr => 2,
+        Language::Es => 3,
+        Language::Zh => 4,
+    };
+    for (idx, item) in refs.lang_items.iter().enumerate() {
+        let state = if idx == active_idx {
+            NSControlStateValueOn
+        } else {
+            NSControlStateValueOff
+        };
+        unsafe { item.setState(state) };
+    }
+}
+
 fn trigger_battery_refresh() {
     std::thread::spawn(|| {
         if let Ok(info) = fetch_battery_info() {
             if let Some(state) = get_app_state() {
                 let mode = *state.display_mode.lock().unwrap();
+                let lang = *state.language.lock().unwrap();
                 *state.last_battery_info.lock().unwrap() = Some(info.clone());
                 run_on_main(move |mtm| {
                     let refs = state.menu_refs.get(mtm);
-                    update_battery_display(refs, &info, mode, mtm);
+                    update_battery_display(refs, &info, mode, lang, mtm);
                 });
             }
         }
@@ -152,7 +210,8 @@ fn trigger_check_updates(manual: bool) {
     std::thread::spawn(move || {
         if manual {
             if let Some(state) = get_app_state() {
-                let checking_text = "Checking for Updates…";
+                let lang = *state.language.lock().unwrap();
+                let checking_text = lang.checking_updates();
                 run_on_main(move |mtm| {
                     let refs = state.menu_refs.get(mtm);
                     unsafe {
@@ -171,17 +230,19 @@ fn trigger_check_updates(manual: bool) {
                 let cur_ver = info.current_version.clone();
 
                 if let Some(state) = get_app_state() {
+                    let lang = *state.language.lock().unwrap();
                     *state.latest_update.lock().unwrap() = Some(info);
 
                     run_on_main(move |mtm| {
                         let refs = state.menu_refs.get(mtm);
                         if is_newer {
-                            let text = format!("Update Available (v{}) — Download…", latest_ver);
+                            let text = lang.update_available(&latest_ver);
                             unsafe {
                                 refs.item_update.setTitle(&NSString::from_str(&text));
-                                if let Some(icon) =
-                                    load_sf_symbol("arrow.down.circle.fill", Some("arrow.down.circle"))
-                                {
+                                if let Some(icon) = load_sf_symbol(
+                                    "arrow.down.circle.fill",
+                                    Some("arrow.down.circle"),
+                                ) {
                                     refs.item_update.setImage(Some(&icon));
                                 }
                                 refs.item_update.setEnabled(true);
@@ -190,7 +251,7 @@ fn trigger_check_updates(manual: bool) {
                                 open_release_url(&release_url);
                             }
                         } else {
-                            let text = format!("Up to Date (v{})", cur_ver);
+                            let text = lang.up_to_date(&cur_ver);
                             unsafe {
                                 refs.item_update.setTitle(&NSString::from_str(&text));
                                 if let Some(icon) =
@@ -207,7 +268,8 @@ fn trigger_check_updates(manual: bool) {
                 eprintln!("Failed to check for updates: {}", err);
                 if manual {
                     if let Some(state) = get_app_state() {
-                        let text = "Update Check Failed (Offline)";
+                        let lang = *state.language.lock().unwrap();
+                        let text = lang.update_failed_offline();
                         run_on_main(move |mtm| {
                             let refs = state.menu_refs.get(mtm);
                             unsafe { refs.item_update.setTitle(&NSString::from_str(text)) };
@@ -264,12 +326,40 @@ declare_class!(
 
             if let Some(state) = get_app_state() {
                 *state.display_mode.lock().unwrap() = new_mode;
+                let lang = *state.language.lock().unwrap();
                 let cached_info = state.last_battery_info.lock().unwrap().clone();
                 run_on_main(move |mtm| {
                     let refs = state.menu_refs.get(mtm);
                     update_mode_checkmarks(refs, new_mode);
                     if let Some(info) = cached_info {
-                        update_battery_display(refs, &info, new_mode, mtm);
+                        update_battery_display(refs, &info, new_mode, lang, mtm);
+                    }
+                });
+            }
+        }
+
+        #[method(selectLanguage:)]
+        fn select_language(&self, sender: &NSMenuItem) {
+            let tag = unsafe { sender.tag() };
+            let new_lang = match tag {
+                1 => Language::Ru,
+                2 => Language::Fr,
+                3 => Language::Es,
+                4 => Language::Zh,
+                _ => Language::En,
+            };
+
+            if let Some(state) = get_app_state() {
+                *state.language.lock().unwrap() = new_lang;
+                let mode = *state.display_mode.lock().unwrap();
+                let cached_info = state.last_battery_info.lock().unwrap().clone();
+                let cached_update = state.latest_update.lock().unwrap().clone();
+                run_on_main(move |mtm| {
+                    let refs = state.menu_refs.get(mtm);
+                    update_language_checkmarks(refs, new_lang);
+                    update_static_menu_labels(refs, new_lang, cached_update.as_ref());
+                    if let Some(info) = cached_info {
+                        update_battery_display(refs, &info, mode, new_lang, mtm);
                     }
                 });
             }
@@ -292,6 +382,7 @@ fn set_item_sf_symbol(item: &NSMenuItem, primary: &str, fallback: Option<&str>) 
 
 fn main() {
     let mtm = MainThreadMarker::new().expect("Must run on main thread");
+    let initial_lang = Language::detect_system();
 
     // Initialize NSApplication in Accessory mode (menu bar only, no Dock icon)
     let app = NSApplication::sharedApplication(mtm);
@@ -336,7 +427,7 @@ fn main() {
     // 2. Hardware Telemetry Section (with SF Symbols)
     let item_health = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Battery Health: --"),
+            &NSString::from_str(&initial_lang.battery_health(None, None, None)),
             None,
             &NSString::from_str(""),
         )
@@ -346,7 +437,7 @@ fn main() {
 
     let item_cycles = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Cycle Count: --"),
+            &NSString::from_str(&initial_lang.cycle_count(None)),
             None,
             &NSString::from_str(""),
         )
@@ -356,7 +447,7 @@ fn main() {
 
     let item_power = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Power Draw: --"),
+            &NSString::from_str(&initial_lang.power_metrics(None, None, false)),
             None,
             &NSString::from_str(""),
         )
@@ -369,7 +460,7 @@ fn main() {
     // 3. Menu Bar Display Mode Submenu
     let item_display_menu = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Menu Bar Display"),
+            &NSString::from_str(initial_lang.menu_bar_display()),
             None,
             &NSString::from_str(""),
         )
@@ -377,11 +468,12 @@ fn main() {
     set_item_sf_symbol(&item_display_menu, "slider.horizontal.3", None);
 
     let display_submenu = NSMenu::new(mtm);
+    let initial_mode_labels = initial_lang.display_mode_labels();
     let mode_specs = [
-        (0isize, "Time & Percentage (3h 15m · 76%)"),
-        (1isize, "Compact (3:15 · 76%)"),
-        (2isize, "Time Remaining Only (3h 15m)"),
-        (3isize, "Percentage Only (76%)"),
+        (0isize, initial_mode_labels[0]),
+        (1isize, initial_mode_labels[1]),
+        (2isize, initial_mode_labels[2]),
+        (3isize, initial_mode_labels[3]),
     ];
     let mode_items = mode_specs.map(|(tag, label)| unsafe {
         let item = display_submenu.addItemWithTitle_action_keyEquivalent(
@@ -398,10 +490,43 @@ fn main() {
     });
     item_display_menu.setSubmenu(Some(&display_submenu));
 
+    // 3b. Language Submenu
+    let item_lang_menu = unsafe {
+        menu.addItemWithTitle_action_keyEquivalent(
+            &NSString::from_str(initial_lang.language_menu_title()),
+            None,
+            &NSString::from_str(""),
+        )
+    };
+    set_item_sf_symbol(&item_lang_menu, "globe", None);
+
+    let lang_submenu = NSMenu::new(mtm);
+    let lang_specs = [
+        (0isize, Language::En, "English"),
+        (1isize, Language::Ru, "Русский"),
+        (2isize, Language::Fr, "Français"),
+        (3isize, Language::Es, "Español"),
+        (4isize, Language::Zh, "简体中文"),
+    ];
+    let lang_items = lang_specs.map(|(tag, lang_variant, label)| unsafe {
+        let item = lang_submenu.addItemWithTitle_action_keyEquivalent(
+            &NSString::from_str(label),
+            Some(sel!(selectLanguage:)),
+            &NSString::from_str(""),
+        );
+        item.setTag(tag);
+        item.setTarget(Some(&handler));
+        if lang_variant == initial_lang {
+            item.setState(NSControlStateValueOn);
+        }
+        item
+    });
+    item_lang_menu.setSubmenu(Some(&lang_submenu));
+
     // 4. Action Items (Refresh, Updates, System Settings)
     let item_refresh = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Refresh Now"),
+            &NSString::from_str(initial_lang.refresh_now()),
             Some(sel!(refreshBattery:)),
             &NSString::from_str("r"),
         )
@@ -409,7 +534,7 @@ fn main() {
     set_item_sf_symbol(&item_refresh, "arrow.clockwise", None);
     unsafe { item_refresh.setTarget(Some(&handler)) };
 
-    let version_str = format!("Check for Updates… (v{})", env!("CARGO_PKG_VERSION"));
+    let version_str = initial_lang.check_for_updates(env!("CARGO_PKG_VERSION"));
     let item_update = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
             &NSString::from_str(&version_str),
@@ -426,7 +551,7 @@ fn main() {
 
     let item_settings = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Battery Settings…"),
+            &NSString::from_str(initial_lang.battery_settings()),
             Some(sel!(openBatterySettings:)),
             &NSString::from_str(","),
         )
@@ -437,9 +562,9 @@ fn main() {
     menu.addItem(&NSMenuItem::separatorItem(mtm));
 
     // 5. Quit Item
-    unsafe {
+    let item_quit = unsafe {
         menu.addItemWithTitle_action_keyEquivalent(
-            &NSString::from_str("Quit BatteryBar"),
+            &NSString::from_str(initial_lang.quit_app()),
             Some(sel!(terminate:)),
             &NSString::from_str("q"),
         )
@@ -453,13 +578,22 @@ fn main() {
         item_health,
         item_cycles,
         item_power,
+        item_display_menu,
         mode_items,
+        item_lang_menu,
+        lang_items,
+        item_refresh,
         item_update,
+        item_settings,
+        item_quit,
     };
+
+    update_static_menu_labels(&menu_refs, initial_lang, None);
 
     let app_state = Arc::new(AppState {
         menu_refs: MainThreadBound::new(menu_refs, mtm),
         display_mode: Mutex::new(DisplayMode::Standard),
+        language: Mutex::new(initial_lang),
         last_battery_info: Mutex::new(None),
         latest_update: Mutex::new(None),
     });
@@ -473,6 +607,7 @@ fn main() {
             app_state.menu_refs.get(mtm),
             &initial_info,
             DisplayMode::Standard,
+            initial_lang,
             mtm,
         );
     }
@@ -485,10 +620,11 @@ fn main() {
             if let Ok(info) = fetch_battery_info() {
                 if let Some(state) = get_app_state() {
                     let mode = *state.display_mode.lock().unwrap();
+                    let lang = *state.language.lock().unwrap();
                     *state.last_battery_info.lock().unwrap() = Some(info.clone());
                     run_on_main(move |mtm| {
                         let refs = state.menu_refs.get(mtm);
-                        update_battery_display(refs, &info, mode, mtm);
+                        update_battery_display(refs, &info, mode, lang, mtm);
                     });
                 }
             }

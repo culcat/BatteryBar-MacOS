@@ -1,3 +1,4 @@
+use crate::i18n::Language;
 use regex::Regex;
 use std::process::Command;
 
@@ -33,8 +34,8 @@ pub struct BatteryInfo {
 }
 
 impl BatteryInfo {
-    /// Converts raw "3:15" into human-readable macOS format "3h 15m" (or "45m" if hours == 0)
-    pub fn formatted_time(&self) -> Option<String> {
+    /// Converts raw "3:15" into localized human-readable macOS format (e.g., "3h 15m" or "3ч 15м")
+    pub fn formatted_time_localized(&self, lang: Language) -> Option<String> {
         let raw = self.remaining_time.as_ref()?;
         let mut parts = raw.split(':');
         let hours: u32 = parts.next()?.parse().ok()?;
@@ -43,18 +44,20 @@ impl BatteryInfo {
         if hours == 0 && mins == 0 && self.state == BatteryState::Charged {
             return None;
         }
-        if hours == 0 {
-            Some(format!("{}m", mins))
-        } else {
-            Some(format!("{}h {:02}m", hours, mins))
-        }
+        Some(lang.format_short_duration(hours, mins))
     }
 
-    /// Formats the title string for the macOS menu bar button (paired with an SF Symbol icon)
-    pub fn menu_bar_title(&self, mode: DisplayMode) -> String {
+    /// Converts raw "3:15" into human-readable macOS format "3h 15m" (or "45m" if hours == 0)
+    #[allow(dead_code)]
+    pub fn formatted_time(&self) -> Option<String> {
+        self.formatted_time_localized(Language::En)
+    }
+
+    /// Formats the localized title string for the macOS menu bar button (paired with an SF Symbol icon)
+    pub fn menu_bar_title_localized(&self, mode: DisplayMode, lang: Language) -> String {
         match mode {
             DisplayMode::PercentageOnly => format!("{}%", self.percentage),
-            DisplayMode::TimeOnly => match self.formatted_time() {
+            DisplayMode::TimeOnly => match self.formatted_time_localized(lang) {
                 Some(t) => t,
                 None => format!("{}%", self.percentage),
             },
@@ -63,12 +66,18 @@ impl BatteryInfo {
                 (_, Some(raw)) if raw != "0:00" => format!("{} · {}%", raw, self.percentage),
                 _ => format!("{}%", self.percentage),
             },
-            DisplayMode::Standard => match (&self.state, self.formatted_time()) {
+            DisplayMode::Standard => match (&self.state, self.formatted_time_localized(lang)) {
                 (BatteryState::Charged, _) => format!("{}%", self.percentage),
                 (_, Some(human_time)) => format!("{} · {}%", human_time, self.percentage),
                 _ => format!("{}%", self.percentage),
             },
         }
+    }
+
+    /// Formats the title string for the macOS menu bar button (English default)
+    #[allow(dead_code)]
+    pub fn menu_bar_title(&self, mode: DisplayMode) -> String {
+        self.menu_bar_title_localized(mode, Language::En)
     }
 
     /// Legacy compatibility helper used in basic tests
@@ -119,26 +128,39 @@ impl BatteryInfo {
         }
     }
 
-    /// Primary status line for the native header card (Control Center style)
-    pub fn primary_status_line(&self) -> String {
+    /// Primary localized status line for the native header card (Control Center style)
+    pub fn primary_status_line_localized(&self, lang: Language) -> String {
         match self.state {
-            BatteryState::Discharging => match self.formatted_time() {
-                Some(t) => format!("About {} remaining", t),
-                None => "Calculating time remaining…".to_string(),
+            BatteryState::Discharging => match self.formatted_time_localized(lang) {
+                Some(t) => lang.about_remaining(&t),
+                None => lang.calculating().to_string(),
             },
-            BatteryState::Charging => match self.formatted_time() {
-                Some(t) => format!("{} until fully charged", t),
-                None => "Charging…".to_string(),
+            BatteryState::Charging => match self.formatted_time_localized(lang) {
+                Some(t) => lang.until_full(&t),
+                None => lang.charging_in_progress().to_string(),
             },
-            BatteryState::Charged => "Fully Charged".to_string(),
-            BatteryState::AcAttached => "Plugged In · Not Charging".to_string(),
+            BatteryState::Charged => lang.fully_charged().to_string(),
+            BatteryState::AcAttached => lang.plugged_in_not_charging().to_string(),
             BatteryState::Unknown(ref s) => format!("Status: {}", s),
         }
     }
 
-    /// Secondary power source line for the native header card
+    /// Primary status line for the native header card (English default)
+    #[allow(dead_code)]
+    pub fn primary_status_line(&self) -> String {
+        self.primary_status_line_localized(Language::En)
+    }
+
+    /// Secondary localized power source line for the native header card
+    pub fn source_line_localized(&self, lang: Language) -> String {
+        let is_adapter = self.power_source == "Power Adapter";
+        lang.power_source_line(is_adapter).to_string()
+    }
+
+    /// Secondary power source line for the native header card (English default)
+    #[allow(dead_code)]
     pub fn source_line(&self) -> String {
-        format!("Power Source: {}", self.power_source)
+        self.source_line_localized(Language::En)
     }
 }
 

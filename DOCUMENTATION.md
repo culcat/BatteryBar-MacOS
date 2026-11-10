@@ -70,6 +70,7 @@
    - **Карточка заголовка в стиле Control Center (`HeaderCardView`)**: Верхний элемент `NSMenu` содержит кастомный `NSView` с крупным заголовком **Battery**, процентом заряда справа, плавным капсульным прогресс-баром (`BatteryProgressBarView` на базе `NSBezierPath` с динамическими семантическими цветами `systemGreenColor` / `systemOrangeColor` / `systemRedColor`) и вторичными подписями (`secondaryLabelColor`).
    - **Аппаратная телеметрия (`ioreg -rc AppleSmartBattery -d 1`)**: Отображение здоровья аккумулятора (`Battery Health` в `%` и `mAh`), числа циклов перезарядки (`Cycle Count`) и текущего энергопотребления в ваттах (`Power Draw: W / V`).
    - **Выбор формата отображения (`Menu Bar Display`)**: Подменю с чекмарками для переключения формата на лету (`3h 15m · 76%`, `3:15 · 76%`, `3h 15m`, `76%`).
+   - **Мультиязычная локализация (`i18n.rs`)**: Автоматическое определение системного языка macOS при запуске (`defaults read -g AppleLanguages` с фоллбэком на переменные окружения `LC_ALL` / `LC_MESSAGES` / `LANG`, по умолчанию — английский) и поддержка 5 языков (**English, Русский, Français, Español, 简体中文**), а также подменю `Language` (`globe`) для переключения языка интерфейса на лету без перезапуска.
    - **Быстрый переход в настройки (`Cmd+,`)**: Пункт `Battery Settings…` открывает системный раздел *System Settings → Battery*.
 
 4. **Функционал обновления**:
@@ -155,11 +156,17 @@ battery-bar/
 ├── scripts/
 │   └── build_dmg.sh      # Скрипт сборки BatteryBar.app и создания .dmg
 ├── Cargo.toml            # Зависимости (objc2, objc2-app-kit, regex)
-├── README.md             # Презентационный файл репозитория
+├── README.md             # Основной README репозитория (на английском языке по умолчанию)
+├── README.ru.md          # Перевод README на русский язык
+├── README.fr.md          # Перевод README на французский язык
+├── README.es.md          # Перевод README на испанский язык
+├── README.zh.md          # Перевод README на китайский язык (Simplified Chinese)
 ├── DOCUMENTATION.md      # Данная техническая документация
+├── AGENTS.md             # Архитектурные правила и инструкции для AI-агентов
 ├── .gitignore            # Игнорируемые файлы сборщика
 └── src/
     ├── main.rs           # Инициализация AppKit, Menu Bar, обработчики действий меню
+    ├── i18n.rs           # Определение системного языка macOS и переводы (en, ru, fr, es, zh)
     ├── ui.rs             # Нативные macOS компоненты: SF Symbols, HeaderCardView, BatteryProgressBarView
     ├── battery.rs        # Вызов pmset и ioreg, парсинг телеметрии и юнит-тесты
     └── updater.rs        # Проверка релизов GitHub, сравнение semver-версий
